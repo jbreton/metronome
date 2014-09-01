@@ -1,0 +1,548 @@
+<html>
+  <head>
+    <style>
+      div {
+        position: relative;
+        z-index : 20;
+      }
+    </style>
+    <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+    <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+    <script type="text/javascript">
+      var Metronome = {
+        start : false,
+        tempo : 60,
+        tickLength : 80,
+
+        beat : 1,
+        signature : {
+          numerator : 4,
+          denominator : 4,
+          ticks : [1]
+        },
+
+        upHeld : false,
+        upInterval : false,
+        downHeld : false,
+        downInterval : false,
+
+        keydown : false,
+
+        timeout : false,
+
+        tapTimer : false,
+
+        currentProgram : 0,
+        programTimer : false,
+        changeNextBar : false,
+        defaultPrograms : [
+          {
+            signature : '{"n":3,"d":4,"t":[1]}',
+            tempo : 50
+          },
+          {
+            signature : '{"n":4,"d":4,"t":[1]}',
+            tempo : 60
+          },
+          {
+            signature : '{"n":5,"d":4,"t":[1]}',
+            tempo : 70
+          },
+          {
+            signature : '{"n":6,"d":4,"t":[1]}',
+            tempo : 80
+          },
+          {
+            signature : '{"n":7,"d":4,"t":[1,4]}',
+            tempo : 90
+          },
+          {
+            signature : '{"n":7,"d":4,"t":[1,5]}',
+            tempo : 100
+          }
+        ],
+
+        programs : [],
+
+        snd1 : new Audio("data:audio/wav;base64,UklGRroDAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YZYDAAAAAEELxCuUPuhN41jpXqZfC1tfUShDMjGAHDUGku/c2T/G5rWhqTyiA6Avo4CrjbiUyaHdn/NECmEgqjQCRnlTP1zrXzZeRFdxS287FCiIEuj7i+Wj0GK+xq+ppYygzqBSpuKw0r9a0m/n3/1wFN4p8jynTA9YkV7PX7FbfFKnRAQzhB5VCKrx0dv4x0C3mqqxogCgqKKGqiO32sem24HxLQhYHuQyiERmUqZbyl+aXiBYv0wUPQMqmRQK/pfngNLyv/awZ6bNoI6glaWzr0G+gNBg5cH7WhLzJ0k7W0svVzBe6l9OXItTIUbLNIkgcQrE887dsMmvuJGrO6MGoC2ilqnDtSXGsdlp7wsGVxwOMQtDR1H/WqFf8F7zWABOtj7nK64WKACp6V/Uj8EtsjGnGaFboOSkja65vKnOWeOg+UUQ/iWeOQFKSla9Xf5f2lyWVI1HkTaEIo4M4vXK33jLG7qcrMyjGKDBoayocrR0xMHXVO3pA08aNy+AQSNQSlpsXzpfu1k4T01Ayi27GEsCuOtK1izDdrP/p3ihLKBEpG+tObvczFDhhPcqDgkk5jejSFRVRV3+X2RdjVX2SEw4fiSpDgD4zOFCzZa7rq1qpDWgYaHOpymzy8LX1T3rzQE+GF4t6z/zTo1ZKF98X3RaZ1DeQaMvyhpoBM/tNtjVxMG04qjYoRagpKNirMG5EstQ32X1EAwOIig2O0dWVLxc+l/ZXYBWVEr+OXgmvRAh+tHjFc8Wvc6uDaVmoAahAafksS7B8NMs6av/MBZ6K1M+t03EWNper18kW41RY0N8Mc8ciwbk7yjahsYXtsypSaIEoBijWqtTuE/JU91J8/MJECBiNMtFTFMrXOVfRl5nV6ZLsDtjKNgSPvzb5e/Qm776r8Clm6DAoDWmsrCSvxLSHOeL/R8Ujym0PHBM8FeCXtRfylumUuNESzPUHqkI/vEe3D7Id7fAqsWiAqCSomKq7LaTx1vbLPHZBwoemjJORDpSjFvGX6deQ1jwTFY9TirsFF/+6OfL0jDAKLGDptqghKB7pYGvCL4y0BPla/sIEqQnCjsiSxBXHV7uX2VctVNZRhU11SDGChn0Gt77yeK4vatPowigHaJvqZG138Vk2RfvtgUHHMYwzEIcUeNaml/8XhJZMk70PjQs/xZ9APrpVeoBAP//AgD+/wIA/v8BAAAA//8CAP//AAAAAAAAAAABAP//AAA="),
+        snd2 : new Audio("data:audio/wav;base64,UklGRooEAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YWYEAAD//wIA/v8BAAEA/P8GAPr/BQD9/wEAAAAAAP//AgD+/wEAAAD//wEA//8BAP//AQD+/wQA+/8FAPz/AgAAAAAA//8CAP7/AQD//wEA//8BAP//AADHAwMPPRYwHbAjuiknL/Ez/TdCO7I9Rz/3P8Q/qz6yPOE5PzbbMcYsDifOIBMaAROlCyUEkPwO9aztk+bP34HZvdOYziHKb8aHw3rBT8ACwKHAHcJ7xKvHqMtd0MDVttsz4hbpT/C990v/2wZPDpgVhxwgIyspry6EM6Q3/TqCPSk/8j/QP9A+7DwrOqA2SzJHLZ0naSG4Gq8TVgzaBEX9wfVb7jnnbOAU2kDUDM+Eyr/GxMOjwV7AAsCHwPLBN8RXxz/L5s841SLbkeFu6J/vCveV/icGnQ3uFOQbhyKhKDEuGDNKN7U6Tz0LP+k/3T/yPiA9eTr8Nrsyxy0pKAUiXBtaFAoNjQX8/XP2Ce/i5wnhp9rG1IDP6soQxwHEz8FxwAPAb8DHwffDBcfYynDPsdSN2vXgxOfx7lX24f1wBfAMPRRGG+khFiizLaky8DZpOhw96j7eP+k/ED9XPcA6WDcqM0QutyidIv8bBxW6DUIGsv4l97vvhuit4TjbTdX3z1DLZMdDxPfBi8ABwF3AnMG7w7HGd8r3zi7U+tlX4B7nQO6k9Sn9vgQ8DJMTnxpRIYYnNC05MpM2HTrnPMQ+1T/uPzI/hT0LO7A3lzPALkMpMyOmHK0Vbw70Bmj/2fdq8DHpS+LP29LVc9C2y7rHhcQkwqXAA8BMwHPBgMNixhHKiM6m023Zt9925pbt7fR4/AYEjAvjEv4ZsCD9Jq0szTEvNtU5qDynPr8/+z9IP709STsOOP4zPS/NKcojRh1aFh4PqAcfAIv4G/Hb6eziZNxf1ujQI8wPyMrEVMK/wAjAPMBNwUfDEsazyRLOJ9Pa2B3fz+Xq7Dj0x/tMA90KNBJXGRcgaCYvLFYx0DWFOW48gT6vP/w/Zz/lPZU7XThtNLIvVyphJOYdBBfOD1sI1gA9+c/xguqQ4/zc5tZo0YvMacgPxYfC2cATwCnALcEMw8jFU8mhzafSS9iB3i3lN+yO8wn7oAIkCokRrRh8H9QlrivgMG41Mzk1PFM+oT/9P34/Fj7QO7g4zzQuMN4q8ySJHqoXfxAQCYgB9fl98i/rM+SR3XfX4NH7zMLIV8W5wvrAGcAhwAjB2MJ8xfXINc0k0sLX492K5Izr2vJY+uYBdAnYEAgY2x5EJSUrbTAHNeM49DstPog/AECTPyAfAQD+/wEAAAABAP//AAAAAAAAAAABAP//AAAAAAAAAAABAP7/AgD//wAAAQD+/wIA//8BAP//AQD//wAAAgD9/wMA/v8AAAIA/v8BAAAA//8BAAEA/f8DAP7/AQAAAAAA//8BAAAA/v8EAPv/BAD+/wAAAQD//wAAAgD9/wMA/v8BAAAAAAD//wIA/f8EAPz/AwD9/wMA/f8DAP7/AAACAP3/"),
+
+        init : function() {
+          var self = this;
+          this.$redled = $('#led-red');
+          this.$blueled = $('#led-blue');
+
+          if(typeof(localStorage) !== 'undefined') {
+            try {
+              var data = $.parseJSON(localStorage.getItem('programs'));
+
+              if(data) {
+                this.currentProgram = data.current;
+                this.programs = data.programs;
+                this.changeProgram();
+                this.showProgramName();
+              }
+              else {
+                this.programs = this.defaultPrograms;
+              }
+            }
+            catch(e) {
+              this.programs = this.defaultPrograms;
+            }
+          }
+          else {
+            this.programs = this.defaultPrograms;
+          }
+
+          this.tick = function() {
+            if(this.changeNextBar && this.beat == 1) {
+              this.changeNextBar = false;
+              this.changeProgram();
+              return false;
+            }
+
+            if(this.started) {
+              this.timeout = setTimeout(this.tick, this.getTempoInterval());
+            }
+
+            this.show();
+            this.beep();
+            setTimeout(this.hide, this.tickLength);
+          }.bind(this);
+
+          this.show = function() {
+            if(this.signature.ticks.indexOf(this.beat) > -1) {
+              this.$blueled.show();
+            }
+            else {
+              this.$redled.show();
+            }
+          }.bind(this);
+
+          this.hide = function() {
+            if(this.signature.ticks.indexOf(this.beat) > -1) {
+              this.$blueled.hide();
+            }
+            else {
+              this.$redled.hide();
+            }
+
+            this.beat++;
+
+            if(this.beat > this.signature.numerator) {
+              this.beat = 1;
+            }
+          }.bind(this);
+
+          $('#up')
+            .on('click', function() {
+              self.up();
+            })
+            .on('mousedown', function() {
+              self.upHeld = true;
+              self.increaseTempo();
+            })
+            .on('mouseup', function() {
+              self.upHeld = false;
+              if(self.upInterval) {
+                clearInterval(self.upInterval);
+                self.upInterval = false;
+              }
+            });
+
+          $('#down')
+            .on('click', function() {
+              self.down();
+            })
+            .on('mousedown', function() {
+              self.downHeld = true;
+              self.decreaseTempo();
+            })
+            .on('mouseup', function() {
+              self.downHeld = false;
+              if(self.downInterval) {
+                clearInterval(self.downInterval);
+                self.downInterval = false;
+              }
+            });
+
+          $('#start').on('click', function() { self.start(); $('#stop'); });
+          $('#stop').on('click', function() { self.stop(); $('#start'); });
+          $('#reset').on('click', function() { self.reset(); $('#stop'); });
+
+          $('#signature').on('change', function() {
+            var started = self.started;
+            if(started) {
+              this.stop();
+            }
+
+            var sig = $.parseJSON(this.value);
+            self.setSignature(sig.n, sig.d, sig.t);
+
+            if(started) {
+              this.start();
+            }
+          });
+
+          $('#tap-tempo')
+            .on('mousedown', function() {
+              self.tapTempo();
+            })
+            .on('keypress', function(event) {
+              if(event.which == 32) {
+                self.tapTempo();
+              }
+            })
+            .on('mouseup', function() {
+              if(self.tapDown) {
+                self.stop();
+              }
+            })
+            .on('keyup', function(event) {
+              if(self.tapDown && event.which == 32) {
+                self.stop;
+              }
+            });
+
+          $('#previous')
+            .on('mousedown', function() {
+              self.previousProgramDown();
+            })
+            .on('mouseup', function() {
+              self.previousProgramUp();
+            });
+
+          $('#next')
+            .on('mousedown', function() {
+              self.nextProgramDown();
+            })
+            .on('mouseup', function() {
+              self.nextProgramUp();
+            });
+
+          $('#save').on('click', function() {
+            self.programs[self.currentProgram] = {
+              signature: $('#signature').val(),
+              tempo : self.tempo
+            };
+
+            if(typeof(localStorage) !== 'undefined') {
+              localStorage.setItem('programs', JSON.stringify({programs:self.programs,current:self.currentProgram}));
+            }
+          });
+
+          $('#init').on('click', function() {
+            self.currentProgram = 0;
+            self.programs = self.defaultPrograms;
+            self.changeProgram();
+            self.showProgramName();
+
+            if(typeof(localStorage) !== 'undefined') {
+              localStorage.setItem('programs', false);
+            }
+          });
+
+          this.changeProgram();
+
+          return this;
+        },
+
+        getTempoInterval : function() {
+          return Math.round(60 / (this.tempo / (4 / this.signature.denominator)) * 1000);
+        },
+        start : function() {
+          if(!Metronome.started) {
+            this.beat = 1;
+            Metronome.started = true;
+
+            if(this.tapTimer) {
+              var now = Date.now();
+              var delay = now - this.tapTimer;
+
+              this.tempo = Math.round(60 / (delay / 1000));
+              this.showTempo();
+
+              this.tapTimer = false;
+            }
+
+            this.tick();
+          }
+        },
+        stop : function() {
+          if(Metronome.started) {
+            if(this.timeout) {
+              clearTimeout(this.timeout);
+              this.timeout = false;
+            }
+            Metronome.started = false;
+          }
+        },
+        reset : function() {
+          if(this.started) {
+            this.stop();
+            this.start();
+          }
+        },
+
+        up : function(inc) {
+          if(!inc) inc = 5;
+          this.tempo += inc;
+          this.showTempo();
+        },
+
+        down : function(inc) {
+          if(!inc) inc = 5;
+          this.tempo -= inc;
+          this.showTempo();
+        },
+
+        showTempo : function() {
+          $('#tempo').text(this.tempo + ' bpm');
+        },
+
+        increaseTempo : function() {
+          if(!this.upInterval) {
+            var self = this,
+                interval = false,
+                rep = 0,
+                inc = 1;
+
+            this.upInterval = setInterval(function() {
+              if(self.upHeld) {
+
+                if(rep == 10) {
+                  inc = 5;
+                }
+                else {
+                  rep++;
+                }
+
+                self.up(inc);
+              }
+            }, 250);
+          }
+        },
+
+        decreaseTempo : function() {
+          if(!this.downInterval) {
+            var self = this,
+                interval = false,
+                rep = 0,
+                inc = 1;
+
+            this.downInterval = setInterval(function() {
+              if(self.downHeld) {
+
+                if(rep == 10) {
+                  inc = 5;
+                }
+                else {
+                  rep++;
+                }
+
+                self.down(inc);
+              }
+            }, 250);
+          }
+        },
+
+        beep : function () {
+          if(this.signature.ticks.indexOf(this.beat) > -1) {
+            this.snd1.play();
+          }
+          else {
+            this.snd2.play();
+          }
+        },
+
+        setSignature : function(n, d, t) {
+          this.signature.numerator = n;
+          this.signature.denominator = d;
+          this.signature.ticks = t;
+        },
+
+        tapTempo : function() {
+          this.beat = 1;
+          var now = Date.now();
+          if(this.tapTimer) {
+            var delay = now - this.tapTimer;
+
+            this.tempo = Math.round(60 / (delay / 1000));
+            this.showTempo();
+          }
+
+          this.tapTimer = now;
+
+          this.stop();
+          this.tick();
+        },
+
+        changeProgram : function() {
+          var started = this.started;
+          if(started) {
+            this.stop();
+          }
+
+          this.tempo = this.programs[this.currentProgram].tempo;
+          this.showTempo();
+
+          $('#signature').val(this.programs[this.currentProgram].signature);
+          var sig = $.parseJSON(this.programs[this.currentProgram].signature);
+          this.setSignature(sig.n, sig.d, sig.t);
+
+          if(started) {
+            this.start();
+          }
+        },
+
+        showProgramName : function() {
+          var p = ['A', 'B', 'C', 'D', 'E', 'F'];
+          $('#program').text(p[this.currentProgram]);
+        },
+
+        previousProgramDown : function() {
+          this.currentProgram--;
+          if(this.currentProgram < 0) {
+            this.currentProgram = 5;
+          }
+
+          this.showProgramName();
+
+          this.programTimer = Date.now();
+        },
+
+        previousProgramUp : function() {
+          if(!this.started || Date.now() - this.programTimer < 250) {
+            this.changeProgram();
+          }
+          else {
+            this.changeNextBar = true;
+          }
+        },
+
+        nextProgramDown : function() {
+          this.currentProgram++;
+          if(this.currentProgram > 5) {
+            this.currentProgram = 0;
+          }
+
+          this.showProgramName();
+
+          this.programTimer = Date.now();
+        },
+
+        nextProgramUp : function() {
+          if(!this.started || Date.now() - this.programTimer < 250) {
+            this.changeProgram();
+          }
+          else {
+            this.changeNextBar = true;
+          }
+        }
+      }
+
+      $(document)
+        .ready(function() {
+          Metronome.init();
+          $('#start').focus();
+        })
+        .on('keydown', function(event) {
+          if(!Metronome.keydown || event.which == 38 || event.which == 40) {
+            Metronome.keydown = true;
+
+            switch(event.which) {
+              case 38:
+                Metronome.up(event.shiftKey ? 5 : 1);
+                break;
+              case 40:
+                Metronome.down(event.shiftKey ? 5 : 1);
+                break;
+              case 37: // u
+                Metronome.previousProgramDown();
+                break;
+              case 39: // i
+                Metronome.nextProgramDown();
+                break;
+              case 74: // j
+                Metronome.reset();
+                break;
+              case 75: // k
+                Metronome.tapTempo();
+                break;
+              case 76: // l
+                Metronome.start();
+                break;
+              case 186:// ;
+                Metronome.stop();
+                break;
+            }
+          }
+        })
+        .on('keyup', function() {
+          Metronome.keydown = false;
+
+          switch(event.which) {
+            case 37: // u
+              Metronome.previousProgramUp();
+              break;
+            case 39:
+              Metronome.nextProgramUp();
+              break;
+          }
+        });
+    </script>
+  </head>
+<body>
+<div>
+  <div style="float: left;">
+    <div>
+      <input type="button" id="down" value="-" />
+      <input type="button" id="up" value="+" />
+    </div>
+    <div>
+      <span>Signature</span>
+      <select id="signature">
+        <option value='{"n":3,"d":4,"t":[1]}'>3/4</option>
+        <option value='{"n":4,"d":4,"t":[1]}' selected=true >4/4</option>
+        <option value='{"n":5,"d":4,"t":[1]}'>5/4</option>
+        <option value='{"n":6,"d":4,"t":[1]}'>6/4</option>
+        <option value='{"n":7,"d":4,"t":[1,4]}'>7/4 (3-4)</option>
+        <option value='{"n":7,"d":4,"t":[1,5]}'>7/4 (4-3)</option>
+        <option value='{"n":9,"d":4,"t":[1,5]}'>9/4 (4-5)</option>
+        <option value='{"n":9,"d":4,"t":[1,6]}'>9/4 (5-4)</option>
+        <option value='{"n":5,"d":8,"t":[1,3]}'>5/8 (2-3)</option>
+        <option value='{"n":5,"d":8,"t":[1,4]}'>5/8 (3-2)</option>
+        <option value='{"n":7,"d":8,"t":[1,4]}'>7/8 (3-4)</option>
+        <option value='{"n":7,"d":8,"t":[1,5]}'>7/8 (4-3)</option>
+        <option value='{"n":9,"d":8,"t":[1,5]}'>9/8 (4-5)</option>
+        <option value='{"n":9,"d":8,"t":[1,6]}'>9/8 (5-4)</option>
+      </select>
+    </div>
+    <div>
+      <input type="button" id="start" value="start" />
+      <input type="button" id="stop" value="stop" />
+      <input type="button" id="reset" value="reset" />
+    </div>
+    <div>
+      <input type="button" id="tap-tempo" value="Tap tempo" />
+    </div>
+  </div>
+
+  <div style="float: right;">
+    <div>
+      <span>Programme : </span><span id="program">A</span>
+      <br>
+      <input type="button" id="previous" value="Pr&eacute;c&eacute;dent" />
+      <input type="button" id="next" value="Suivant" />
+      <br>
+      <input type="button" id="save" value="Enregistrer" />
+      <input type="button" id="init" value="R&eacute;initialiser" />
+    </div>
+  </div>
+
+  <div id="tempo" style="float: left; width: 100%; height: 400px; font-size: 250px; text-align: center;"></div>
+  <div id="led-red" style="position: fixed; top: 0; left: 0; z-index: 5; width: 100%; height: 100%; background-color: red; display: none;"></div>
+  <div id="led-blue" style="position: fixed; top: 0; left: 0; z-index: 5; width: 100%; height: 100%; background-color: blue; display: none;"></div>
+</div>
+</body>
+</html>
